@@ -22,7 +22,7 @@ public class S3Config {
         return S3Client.builder()
                 .endpointOverride(URI.create(s3Endpoint))
                 .region(Region.US_EAST_1)
-                .credentialsProvider(software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create("dummy", "dummy")))
+                .credentialsProvider(software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider.create())
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
                 .build();
     }
