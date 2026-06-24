@@ -64,10 +64,28 @@ public class S3StorageService {
                 .build();
 
         PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(r -> r
-                .signatureDuration(Duration.ofHours(1))
+                .signatureDuration(Duration.ofDays(7))
                 .getObjectRequest(objectRequest)
         );
 
-        return presignedRequest.url().toString();
+        String url = presignedRequest.url().toString();
+        // Substitui o host interno do docker pelo localhost se contiver seaweedfs (solução para dev)
+        if (url.contains("seaweedfs")) {
+            url = url.replaceAll("seaweedfs(:\\d+)?", "localhost$1");
+        }
+        return url;
+    }
+
+    public void uploadFile(String fileKey, byte[] content, String contentType) {
+        PutObjectRequest objectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(fileKey)
+                .contentType(contentType)
+                .build();
+        s3Client.putObject(objectRequest, software.amazon.awssdk.core.sync.RequestBody.fromBytes(content));
+    }
+
+    public void deleteFile(String fileKey) {
+        s3Client.deleteObject(b -> b.bucket(bucketName).key(fileKey));
     }
 }

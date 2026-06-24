@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +49,38 @@ public class AttachmentService {
         rabbitTemplate.convertAndSend("attachment.exchange", "attachment.uploaded", saved.getId().toString());
 
         return toDTO(saved);
+    }
+
+    @Transactional
+    public AttachmentDTO uploadAndSave(MultipartFile file, UUID entityId, String entityType, UUID userId) throws IOException {
+        String fileName = file.getOriginalFilename();
+        String fileKey = UUID.randomUUID().toString() + "-" + fileName;
+        
+        s3StorageService.uploadFile(fileKey, file.getBytes(), file.getContentType());
+        
+        Attachment attachment = new Attachment();
+        attachment.setFileName(fileName);
+        attachment.setContentType(file.getContentType());
+        attachment.setSizeBytes(file.getSize());
+        attachment.setStoragePath(fileKey);
+        attachment.setEntityId(entityId);
+        attachment.setEntityType(entityType);
+        attachment.setUploadedBy(userId);
+
+        Attachment saved = repository.save(attachment);
+
+        rabbitTemplate.convertAndSend("attachment.exchange", "attachment.uploaded", saved.getId().toString());
+
+        return toDTO(saved);
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID id) {
+        repository.findById(id).ifPresent(att -> {
+            s3StorageService.deleteFile(att.getStoragePath());
+            repository.delete(att);
+            rabbitTemplate.convertAndSend("attachment.exchange", "attachment.deleted", id.toString());
+        });
     }
 
     public List<AttachmentDTO> getAttachmentsForEntity(UUID entityId) {
