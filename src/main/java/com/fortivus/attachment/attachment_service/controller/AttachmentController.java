@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/v1/attachments")
@@ -36,5 +38,21 @@ public class AttachmentController {
     @GetMapping("/entity/{entityId}")
     public ResponseEntity<List<AttachmentDTO>> getEntityAttachments(@PathVariable UUID entityId) {
         return ResponseEntity.ok(attachmentService.getAttachmentsForEntity(entityId));
+    }
+
+    @PostMapping(value = "/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AttachmentDTO> upload(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("entityId") UUID entityId,
+            @RequestParam("entityType") String entityType) throws IOException {
+        UUID userId = UUID.randomUUID(); // Mock JWT User
+        AttachmentDTO dto = attachmentService.uploadAndSave(file, entityId, entityType, userId);
+        return ResponseEntity.ok(dto);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAttachment(@PathVariable UUID id) {
+        attachmentService.deleteAttachment(id);
+        return ResponseEntity.noContent().build();
     }
 }

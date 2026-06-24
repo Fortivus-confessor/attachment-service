@@ -9,6 +9,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 
 import java.net.URI;
 
@@ -31,6 +32,7 @@ public class S3Config {
                 .region(Region.US_EAST_1) // SeaweedFS ignores region
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
                 .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
+                .httpClient(UrlConnectionHttpClient.builder().build())
                 .build();
     }
 
