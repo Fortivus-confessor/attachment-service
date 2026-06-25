@@ -35,7 +35,7 @@ public class AttachmentService {
         Attachment attachment = new Attachment();
         attachment.setFileName(request.fileName());
         attachment.setContentType(request.contentType());
-        attachment.setSizeBytes(request.sizeBytes());
+        attachment.setSizeBytes(request.sizeBytes() != null ? request.sizeBytes() : 0L);
         attachment.setStoragePath(request.fileKey());
         attachment.setEntityId(request.entityId());
         attachment.setEntityType(request.entityType());

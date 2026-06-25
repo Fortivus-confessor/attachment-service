@@ -54,7 +54,11 @@ public class S3StorageService {
                 .putObjectRequest(objectRequest)
         );
 
-        return presignedRequest.url().toString();
+        String url = presignedRequest.url().toString();
+        if (url.contains("seaweedfs")) {
+            url = url.replaceAll("seaweedfs(:\\d+)?", "localhost$1");
+        }
+        return url;
     }
 
     public String generatePresignedDownloadUrl(String fileKey) {

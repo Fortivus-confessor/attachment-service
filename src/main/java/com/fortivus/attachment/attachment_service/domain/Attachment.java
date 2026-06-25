@@ -20,7 +20,6 @@ public class Attachment {
     @Column(nullable = false)
     private String contentType;
 
-    @Column(nullable = false)
     private Long sizeBytes;
 
     @Column(nullable = false)
