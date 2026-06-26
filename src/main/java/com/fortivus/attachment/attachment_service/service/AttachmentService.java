@@ -52,18 +52,18 @@ public class AttachmentService {
     }
 
     @Transactional
-    public AttachmentDTO uploadAndSave(MultipartFile file, UUID entityId, String entityType, UUID userId) throws IOException {
+    public AttachmentDTO uploadAndSave(MultipartFile file, Long despachoId, String entityType, UUID userId) throws IOException {
         String fileName = file.getOriginalFilename();
         String fileKey = UUID.randomUUID().toString() + "-" + fileName;
-        
+
         s3StorageService.uploadFile(fileKey, file.getBytes(), file.getContentType());
-        
+
         Attachment attachment = new Attachment();
         attachment.setFileName(fileName);
         attachment.setContentType(file.getContentType());
         attachment.setSizeBytes(file.getSize());
         attachment.setStoragePath(fileKey);
-        attachment.setEntityId(entityId);
+        attachment.setDespachoId(despachoId);
         attachment.setEntityType(entityType);
         attachment.setUploadedBy(userId);
 
@@ -72,6 +72,12 @@ public class AttachmentService {
         rabbitTemplate.convertAndSend("attachment.exchange", "attachment.uploaded", saved.getId().toString());
 
         return toDTO(saved);
+    }
+
+    public List<AttachmentDTO> getAttachmentsByDespachoId(Long despachoId) {
+        return repository.findByDespachoId(despachoId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -99,6 +105,7 @@ public class AttachmentService {
                 downloadUrl,
                 a.getEntityId(),
                 a.getEntityType(),
+                a.getDespachoId(),
                 a.getGpsLat(),
                 a.getGpsLng(),
                 a.getCreatedAt()

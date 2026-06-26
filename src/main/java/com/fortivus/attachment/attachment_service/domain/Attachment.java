@@ -25,11 +25,12 @@ public class Attachment {
     @Column(nullable = false)
     private String storagePath;
 
-    @Column(nullable = false)
-    private UUID entityId; // e.g. report ID
+    private UUID entityId;
 
     @Column(nullable = false)
-    private String entityType; // e.g. "RELATORIO_TERRESTRE"
+    private String entityType; // TERRESTRE | AEREO | MAQUINARIO
+
+    private Long despachoId;
 
     @Column(nullable = false)
     private UUID uploadedBy;

@@ -11,6 +11,7 @@ public record AttachmentDTO(
     String url,
     UUID entityId,
     String entityType,
+    Long despachoId,
     Double gpsLat,
     Double gpsLng,
     LocalDateTime createdAt

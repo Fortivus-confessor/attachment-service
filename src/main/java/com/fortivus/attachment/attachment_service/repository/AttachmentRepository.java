@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface AttachmentRepository extends JpaRepository<Attachment, UUID> {
     List<Attachment> findByEntityId(UUID entityId);
+    List<Attachment> findByDespachoId(Long despachoId);
 }
