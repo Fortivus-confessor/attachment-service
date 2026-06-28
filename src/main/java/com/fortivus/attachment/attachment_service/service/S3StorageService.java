@@ -9,9 +9,7 @@ import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 import jakarta.annotation.PostConstruct;
 import java.time.Duration;
@@ -26,6 +24,9 @@ public class S3StorageService {
 
     @Value("${seaweedfs.bucket:fortivus-attachments}")
     private String bucketName;
+
+    @Value("${seaweedfs.public-url:}")
+    private String publicUrl;
 
     @PostConstruct
     public void initBucket() {
@@ -55,29 +56,15 @@ public class S3StorageService {
         );
 
         String url = presignedRequest.url().toString();
-        if (url.contains("seaweedfs")) {
-            url = url.replaceAll("seaweedfs(:\\d+)?", "localhost$1");
+        if (!publicUrl.isBlank() && url.contains("seaweedfs")) {
+            url = url.replaceFirst("https?://seaweedfs(:\\d+)?", publicUrl);
         }
         return url;
     }
 
     public String generatePresignedDownloadUrl(String fileKey) {
-        GetObjectRequest objectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(fileKey)
-                .build();
-
-        PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(r -> r
-                .signatureDuration(Duration.ofDays(7))
-                .getObjectRequest(objectRequest)
-        );
-
-        String url = presignedRequest.url().toString();
-        // Substitui o host interno do docker pelo localhost se contiver seaweedfs (solução para dev)
-        if (url.contains("seaweedfs")) {
-            url = url.replaceAll("seaweedfs(:\\d+)?", "localhost$1");
-        }
-        return url;
+        String base = publicUrl.isBlank() ? "http://localhost:8333" : publicUrl;
+        return base + "/" + bucketName + "/" + fileKey;
     }
 
     public void uploadFile(String fileKey, byte[] content, String contentType) {
