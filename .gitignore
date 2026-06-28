@@ -25,3 +25,5 @@
 *.ear
 
 build/
+
+*.md
