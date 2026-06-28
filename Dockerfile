@@ -1,11 +1,8 @@
-FROM eclipse-temurin:17-jdk-alpine as builder
+FROM gradle:8-jdk17-alpine AS builder
 WORKDIR /app
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
+COPY build.gradle settings.gradle ./
 COPY src src
-RUN chmod +x gradlew && ./gradlew build -x test
+RUN gradle build -x test --no-daemon
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
