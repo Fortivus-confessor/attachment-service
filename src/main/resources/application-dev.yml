@@ -1,0 +1,24 @@
+spring:
+  config:
+    import:
+      - optional:vault://fortivus/database
+      - optional:vault://fortivus/rabbitmq
+      - optional:vault://fortivus/storage
+
+  cloud:
+    vault:
+      enabled: true
+      uri: ${VAULT_ADDR:http://host.docker.internal:8200}
+      authentication: APPROLE
+      app-role:
+        role-id: ${VAULT_ROLE_ID}
+        secret-id: ${VAULT_SECRET_ID}
+        app-role-path: approle
+      kv:
+        enabled: true
+        backend: fortivus
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/${POSTGRES_DB:fortivus}}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
