@@ -1,0 +1,96 @@
+# attachment-service — Regras e Contexto Técnico
+
+## Papel do Serviço
+Fachada de armazenamento de arquivos pesados do ecossistema Fortivus.
+Responsabilidades:
+- Fotos de perfil de usuários e combatentes
+- Fotos de frotas e veículos
+- Arquivos de relatórios de incêndio (terrestre, aéreo, maquinário)
+- Documentos e laudos periciais
+
+## Stack
+- Java 17 (records para DTOs, text blocks quando aplicável)
+- Spring Boot 4.1.0 + Gradle
+- Spring Data JPA + PostgreSQL
+- Spring AMQP (RabbitMQ) — exchange: `attachment.exchange`
+- AWS SDK S3 v2 (`software.amazon.awssdk:s3:2.24.0`) apontando para SeaweedFS local
+- Spring Security + OAuth2 Resource Server (JWT via Keycloak)
+- Lombok
+
+## Estrutura de Pacotes-Alvo
+```
+com.fortivus.attachment.attachment_service/
+  config/          ← S3Config, RabbitMQConfig, SecurityConfig
+  controller/      ← AttachmentController (REST)
+  domain/          ← Attachment (entidade JPA)
+  dto/             ← AttachmentUploadRequest, PresignedUrlResponse, AttachmentConfirmRequest, AttachmentEvent
+  repository/      ← AttachmentRepository (Spring Data JPA)
+  service/         ← AttachmentService (lógica de negócio)
+```
+
+Atenção: o `AttachmentController.java` atual está no pacote errado (`com.fortivus.attachment`).
+Deve ser migrado para `com.fortivus.attachment.attachment_service.controller`.
+
+## Fluxo de Upload (Presigned URL — padrão adotado)
+1. Frontend/mobile solicita `POST /api/v1/attachments/presigned-url` enviando: entityType, entityId, fileName, contentType
+2. `AttachmentService` chama `S3Presigner` para gerar URL assinada (validade: 60 min) no bucket `fortivus-attachments`
+3. Service persiste metadados no PostgreSQL com status `PENDING`
+4. Frontend faz `PUT` direto na URL presigned (sem passar pelo serviço)
+5. Frontend confirma via `POST /api/v1/attachments/confirm` com fileKey, tamanho real, GPS opcional
+6. Service atualiza status para `UPLOADED` e publica evento no RabbitMQ
+
+## Regras de Memória e Streaming
+- NUNCA carregar o arquivo inteiro em `byte[]` — sempre usar `InputStream` / chunked transfer
+- Para operações S3, usar `RequestBody.fromInputStream(stream, contentLength)` ou `AsyncRequestBody`
+- Presigned URL é o padrão preferido: o cliente sobe diretamente no SeaweedFS, aliviando a JVM
+
+## Configuração S3 (SeaweedFS local)
+```java
+// Endpoint: http://localhost:8333  (S3 API do SeaweedFS)
+// Bucket:   fortivus-attachments
+// Credenciais: via application.properties (seaweed.access-key / seaweed.secret-key)
+// Path-style: true (necessário para SeaweedFS)
+```
+
+## RabbitMQ
+- Exchange: `attachment.exchange` (TopicExchange)
+- Routing key de evento publicado: `attachment.uploaded`
+- Payload: `AttachmentEvent` com attachmentId, entityId, entityType, fileKey, contentType, sizeBytes
+
+## Estado Atual do Código (2026-06-27)
+Implementado:
+- `AttachmentServiceApplication.java` — ponto de entrada
+- `config/RabbitMQConfig.java` — apenas a TopicExchange declarada
+- `dto/PresignedUrlResponse.java` (record) — url, fileKey, fileName, contentType
+- `dto/AttachmentConfirmRequest.java` (record) — fileKey, fileName, contentType, sizeBytes, entityId, entityType, gpsLat, gpsLng
+- `AttachmentController.java` (pacote errado, stub com comentários)
+
+Faltando implementar:
+- `config/S3Config.java` — bean `S3Client` + bean `S3Presigner`
+- `config/SecurityConfig.java` — JWT resource server config
+- `domain/Attachment.java` — entidade JPA
+- `repository/AttachmentRepository.java`
+- `service/AttachmentService.java` — geração de presigned URL, confirmação, publicação de evento
+- `controller/AttachmentController.java` — reimplementação no pacote correto
+- `dto/AttachmentUploadRequest.java` e `dto/AttachmentEvent.java`
+- `resources/application.properties` — datasource, S3, RabbitMQ, Keycloak
+
+## Regras de Commit (INEGOCIÁVEL)
+- Mensagens semânticas: `tipo(escopo): descrição` em minúsculas
+- NUNCA incluir `Co-authored-by:` ou qualquer menção a IA
+- Exemplos válidos:
+  - `feat(storage): adiciona configuração do S3Client para SeaweedFS`
+  - `feat(upload): implementa geração de presigned URL e confirmação`
+  - `fix(controller): migra controller para pacote correto`
+
+## Fluxo Git por Entrega
+```
+git checkout -b feat/<nome-tarefa>
+git add <arquivos-específicos>
+git commit -m "feat(escopo): descrição"
+git push origin HEAD
+git checkout main && git pull origin main
+git merge feat/<nome-tarefa> --no-ff -m "Merge: feat/<nome-tarefa>"
+git push origin main
+git branch -d feat/<nome-tarefa>
+```
