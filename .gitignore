@@ -26,4 +26,18 @@
 
 build/
 
+### Gradle ###
+.gradle/
+
+### Segredos e credenciais (nunca versionar) ###
+*.env
+.env
+.env.*
+*.jks
+*.keystore
+key.properties
+keystore.properties
+*.p12
+*.p8
+
 *.md
