@@ -4,6 +4,7 @@ import com.fortivus.attachment.attachment_service.domain.Attachment;
 import com.fortivus.attachment.attachment_service.dto.AttachmentConfirmRequest;
 import com.fortivus.attachment.attachment_service.dto.AttachmentDTO;
 import com.fortivus.attachment.attachment_service.dto.PresignedUrlResponse;
+import com.fortivus.attachment.attachment_service.messaging.AttachmentUploadedEvent;
 import com.fortivus.attachment.attachment_service.repository.AttachmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -46,7 +47,7 @@ public class AttachmentService {
         Attachment saved = repository.save(attachment);
 
         // Notify other services (e.g., Foco Service, Report Service)
-        rabbitTemplate.convertAndSend("attachment.exchange", "attachment.uploaded", saved.getId().toString());
+        rabbitTemplate.convertAndSend("attachment.exchange", "attachment.uploaded", toEvent(saved));
 
         return toDTO(saved);
     }
@@ -69,7 +70,7 @@ public class AttachmentService {
 
         Attachment saved = repository.save(attachment);
 
-        rabbitTemplate.convertAndSend("attachment.exchange", "attachment.uploaded", saved.getId().toString());
+        rabbitTemplate.convertAndSend("attachment.exchange", "attachment.uploaded", toEvent(saved));
 
         return toDTO(saved);
     }
@@ -93,6 +94,18 @@ public class AttachmentService {
         return repository.findByEntityId(entityId).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    private AttachmentUploadedEvent toEvent(Attachment a) {
+        return new AttachmentUploadedEvent(
+                a.getId(),
+                a.getDespachoId(),
+                a.getEntityType(),
+                a.getFileName(),
+                a.getContentType(),
+                a.getSizeBytes(),
+                a.getStoragePath()
+        );
     }
 
     private AttachmentDTO toDTO(Attachment a) {
